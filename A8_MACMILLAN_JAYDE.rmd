@@ -1,0 +1,94 @@
+  
+# Beyond Metabarcoding: Community Ecology  
+Jayde MacMillan 20068250  
+[github-jaydealexandra](https://github.com/jaydealexandra/Metabarcoding)  
+March 16 2022  
+  
+  
+## Introduction  
+  
+[Metabarcoding](https://en.wikipedia.org/wiki/Metabarcoding) is the barcoding of DNA or RNA that allows taxonomic identification on a large scale. This method provides a fast and efficient way of identifying many organisms within a specific area [Westfall et al., 2019](https://pubmed.ncbi.nlm.nih.gov/31657513/). As invasive species continue to spread, the use of metabarcoding as a biosurveillance tool can be utilized to detect and manage these species.  
+  
+Garlic mustard, *Alliaria petiolata* is an invasive species native to Europe. If left unmanaged, it can displace other native wildflowers and interfere with the growth of species of fungi [(Garlic Mustard | Ontario’s Invading Species Awareness Program, 2021)](http://www.invadingspecies.com/invaders/plants/garlic-mustard/)  
+  
+Using a floristic survey from Queen’s University Biological Station (QUBS), we will address two questions:  
+1. Does garlic mustard effect the plant community?  
+2. Does either the presence or absence of garlic mustard have a stronger effect on the sampling population?  
+  
+<center>
+  
+![Garlic Mustard](GM.jpg)  
+Figure 1. A photo of garlic mustard.[(Garlic Mustard - Ontario Invasive Plant Council, 2021)](https://www.ontarioinvasiveplants.ca/invasive-plants/species/garlic-mustard/)
+  
+</center>
+
+
+## Setup  
+  
+```{r}
+#loads the required packages
+library(ggplot2)
+library(ape)
+library(ggtree)
+library(vegan)
+library(dplyr)
+library(reshape2)
+```
+  
+  
+```{r}
+#imports data into an object
+floristicSurvey <- read.csv("FloristicSurvey.csv", header = T, fileEncoding="UTF-8-BOM")
+
+#selects only the species
+floristicSpec <- select(floristicSurvey, Claytonia_virginiana:maianthenum_racemosum)
+
+#creates a data frame of the species and sets the row names to the 
+floristicSub <- data.frame(floristicSpec, row.names = floristicSurvey$Quadrate)
+```
+  
+  
+## Bray-Curtis Dissimilarity  
+  
+The [Bray-Curtis Dissimilarity](https://en.wikipedia.org/wiki/Bray%E2%80%93Curtis_dissimilarity) is used to count the ecological distance between two sites based on the number of occurrences at each site.  
+
+```{r}
+florDist <- vegdist(floristicSub, method = "bray", binary = F)
+```
+  
+## Neighbour Joining Method  
+  
+```{r}
+#performs a neighbour joining tree estimation of the dissimilarity index
+florTree <- nj(florDist)
+
+#creates a tree
+ggtree(florTree, layout="rectangular") %<+% floristicSurvey +
+  geom_tiplab(aes(colour= Location)) + 
+  theme(legend.position="right") +
+  scale_colour_discrete(name= "Garlic Mustard", labels = c("Present", "Absent"))
+```
+  
+Figure 2. A tree showing species that cluster together in the presence and absence of garlic mustard. Garlic mustard has an effect only within the same population. 
+  
+## NMDS
+  
+```{r}
+set.seed(13)
+NMDSdat <- metaMDS(florDist, k=2)
+
+#creates data for plotting
+PDat<-data.frame(NMDS1=NMDSdat$points[,1],
+                 NMDS2=NMDSdat$points[,2],
+                 Quadrate=row.names(floristicSub))
+
+#adds labels using the merge function
+PDat<-merge(PDat,floristicSurvey,by="Quadrate",all.x=T,all.y=F)
+
+#creates a plot
+qplot(x=NMDS1,y=NMDS2,colour=Location,alpha=I(0.6),data=PDat)+theme_bw()
+```
+  
+Figure 3. 
+
+
